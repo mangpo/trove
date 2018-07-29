@@ -197,13 +197,26 @@ void run_benchmark_contiguous_load(const std::string name, void (*test)(array<in
     thrust::device_vector<int> r(n);
     int iterations = 10;
     cuda_timer timer;
+    cudaEvent_t start0, stop0;
+    float time0;
+    cudaEventCreate(&start0);
+    cudaEventCreate(&stop0);
+    
     timer.start();
+    cudaEventRecord(start0,0);
     for(int j = 0; j < iterations; j++) {
         test<<<n_blocks, block_size>>>(thrust::raw_pointer_cast(s.data()), thrust::raw_pointer_cast(r.data()));
     }
+    cudaEventRecord(stop0,0);
+    cudaDeviceSynchronize();
+    
     float time = timer.stop();
     float gbs = (float)((sizeof(T) + sizeof(int)) * (iterations * n_blocks * block_size)) / (time * 1000000);
-    std::cout << gbs << ", ";
+    cudaEventElapsedTime(&time0, start0, stop0);
+    cudaEventDestroy(start0);
+    cudaEventDestroy(stop0);
+    
+    std::cout << gbs << ", (" << time0 << ")";
     bool correct = true;
     if (test != gold) {
         thrust::device_vector<int> g(n);
